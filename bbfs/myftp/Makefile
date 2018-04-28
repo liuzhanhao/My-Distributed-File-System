@@ -1,19 +1,17 @@
-CC = gcc
-CFLAGS = -O2 -Wall
-LIBS = -lpthread
-OBJS = myftp.o
+CC=gcc
+CFLAGS=-lpthread -Wall
 
-%.o: %.c $.h
-	$(CC) $(CFLAGS) -c $< -o $@
+EXE=myftpclient myftpserver
 
-all: myftpserver myftpclient
-
-myftpserver: myftpserver.c $(OBJS)
-	${CC} $(CFLAGS) -o $@ myftpserver.c $(OBJS) ${LIBS} 
-
-myftpclient: myftpclient.c $(OBJS)
-	${CC} $(CFLAGS) -o $@ myftpclient.c $(OBJS) ${LIBS}
+all: ${EXE}
 
 clean:
-	@rm -rf myftpclient myftpserver
-	@rm -rf *.o
+	rm -f ${EXE}
+
+myftpclient: myftpclient.c 
+	g++ -o myftpclient myftpclient.c myftp.c $(CFLAGS)
+
+myftpserver: myftpserver.c
+	perl -i -pe 's/dirent64/dirent/g' myftpserver.c
+	perl -i -pe 's/readdir64/readdir/g' myftpserver.c
+	g++ -o myftpserver myftpserver.c myftp.c $(CFLAGS)
