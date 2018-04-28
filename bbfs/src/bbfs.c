@@ -69,7 +69,7 @@ static void set_file_path(char fpath[PATH_MAX]) {
     file_path[strlen(fpath)] = '\0';
 }
 
-const char * get_file_path(){
+char * get_file_path(){
     return file_path;
 }
 
@@ -485,13 +485,23 @@ int bb_release(const char *path, struct fuse_file_info *fi)
     if (get_is_write()) {
         log_msg("Write operation!!!!!!!!!!!!!\n");
         reset_is_write();
+
+        char command[PATH_MAX];
+        char *file_path = get_file_path();
+        strcpy(command, "../myftp/myftpclient 10.0.2.2 15436 put ");
+        strncat(command, file_path, PATH_MAX); // ridiculously long paths will
+        system(command);
+
+        log_msg("\ncommand: %s\n", command);
+        // Sent file to N data nodes
+        // char command[50];
+        // strcpy(command, );
+        // system(command);
     }
     else {
         log_msg("Read operation!!!!!!!!!!!!!\n");
     }
     log_msg("------------------------------------------\n");
-
-    // Sent file to N data nodes
 
     // We need to close the file.  Had we allocated any resources
     // (buffers etc) we'd need to free them here as well.
