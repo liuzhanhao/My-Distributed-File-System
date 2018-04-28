@@ -4,11 +4,13 @@
 AC_PREREQ([2.69])
 AC_INIT([fuse-tutorial], [2017-10-03], [joseph@pfeifferfamily.net])
 AM_INIT_AUTOMAKE
-AC_CONFIG_SRCDIR([src/bbfs.c])
-AC_CONFIG_HEADERS([src/config.h])
+AC_CONFIG_SRCDIR([src/bbfs.cpp])
+AC_CONFIG_HEADERS([src/config.hpp])
 
 # Checks for programs.
-AC_PROG_CC
+# AC_PROG_CC
+# Jasper's config
+AC_PROG_CXX
 
 # Checks for header files.
 AC_CHECK_HEADERS([fcntl.h limits.h stdlib.h string.h sys/statvfs.h unistd.h utime.h sys/xattr.h])
