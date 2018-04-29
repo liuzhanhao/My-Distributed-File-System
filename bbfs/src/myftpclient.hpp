@@ -12,7 +12,11 @@
 #include <iostream>
 #include <fcntl.h>
 #include <sys/stat.h>
+
 #include "myftp.hpp"
+#include "config.hpp"
+#include "params.hpp"
+#include "log.hpp"
 
 void list_task(in_addr_t ip, unsigned short port)
 {
@@ -202,11 +206,13 @@ void get_task(in_addr_t ip, unsigned short port, std::string file_name)
 void put_task(in_addr_t ip, unsigned short port, std::string file_name)
 {
 	char* file_name_cstr = (char*) file_name.c_str();
-	printf("Try to put file: %s\n", file_name_cstr);
+	// printf("Try to put file: %s\n", file_name_cstr);
+	log_msg("Try to put file: %s\n", file_name_cstr);
 
 	if( access( file_name_cstr, F_OK ) == -1 ) {
 		// file does not exist locally
-		printf("File %s does not exist.\n", file_name_cstr);
+		// printf("File %s does not exist.\n", file_name_cstr);
+		log_msg("File %s does not exist.\n", file_name_cstr);
 		exit(1);
 	}
 
@@ -218,6 +224,7 @@ void put_task(in_addr_t ip, unsigned short port, std::string file_name)
 
 	if(fd == -1)
 	{
+		log_msg("fail to create socket()");
 		perror("socket()"); // fail to create socket
 		exit(1);
 	}
@@ -230,6 +237,7 @@ void put_task(in_addr_t ip, unsigned short port, std::string file_name)
 
 	if( connect(fd, (struct sockaddr *) &addr, addrlen) == -1 )		// connect to the destintation
 	{
+		log_msg("fail to connect()");
 		perror("connect()");
 		exit(1);
 	}
@@ -239,9 +247,11 @@ void put_task(in_addr_t ip, unsigned short port, std::string file_name)
 	memcpy(send_msg.protocol, "myftp", sizeof(send_msg.protocol));
 	send_msg.type = (unsigned char)0xC1;
 	send_msg.length = htonl(sizeof(send_msg) + file_name.size() + 1);
-	printf("%s name's size is %lu\n", file_name_cstr, file_name.size() + 1);
+	log_msg("%s name's size is %lu\n", file_name_cstr, file_name.size() + 1);
+	// printf("%s name's size is %lu\n", file_name_cstr, file_name.size() + 1);
 	sendn(fd, &send_msg, sizeof(send_msg));
-	printf("PUT_REQUEST is sent.\n");
+	log_msg("PUT_REQUEST is sent.\n");
+	// printf("PUT_REQUEST is sent.\n");
 
 	send(fd, file_name_cstr, file_name.size() + 1, 0); // send payload: name of the file to be uploaded
 
@@ -251,24 +261,30 @@ void put_task(in_addr_t ip, unsigned short port, std::string file_name)
 
 	if(count == -1) // can not receive from network
 	{
+		log_msg("reading...\n");
 		perror("reading...");
 		exit(1);
 	}
-	else if(count == 0) // nothing can be received.
-		printf("Nothing\n");
+	else if(count == 0) { // nothing can be received.
+		// printf("Nothing\n");
+		log_msg("Nothing\n");
+	}
 	else if (memcmp(recv_msg.protocol, "myftp", sizeof(recv_msg.protocol)) == 0) { // protocol is "myftp"
 		// handle PUT_REPLY
 		if (recv_msg.type == (unsigned char) 0xC2) {
-			printf("Received PUT_REPLY.\n");
+			// printf("Received PUT_REPLY.\n");
+			log_msg("Received PUT_REPLY.\n");
 
 			// send flie data
 			int file_fd;
 		    if((file_fd = open(file_name_cstr, O_RDONLY)) == -1) {
-		      printf("cannot open file %s\n", file_name_cstr);
+		      // printf("cannot open file %s\n", file_name_cstr);
+		      log_msg("cannot open file %s\n", file_name_cstr);
 		      exit(1);
 		    }
 		    off_t file_size = lseek(file_fd, 0, SEEK_END);
-		    printf("file_size: %ld\n", file_size);
+		    // printf("file_size: %ld\n", file_size);
+		    log_msg("file_size: %ld\n", file_size);
 
 			// FILE_DATA
 			struct message_s file_msg;
@@ -276,7 +292,8 @@ void put_task(in_addr_t ip, unsigned short port, std::string file_name)
 			file_msg.type = (unsigned char)0xFF;
 			file_msg.length = htonl(sizeof(file_msg) + file_size);
 			sendn(fd, &file_msg, sizeof(file_msg)); 
-			printf("FILE_DATA is sent.\n");
+			// printf("FILE_DATA is sent.\n");
+			log_msg("FILE_DATA is sent.\n");
 
 			// Send file data
 			lseek(file_fd, 0, SEEK_SET);
@@ -287,6 +304,7 @@ void put_task(in_addr_t ip, unsigned short port, std::string file_name)
 				int read_size = read(file_fd, buffer, 1024);
 				if(read_size == -1){
 				  printf("error in reading file");
+				  log_msg("error in reading file\n");
 				  break;
 				}
 				// send a buffer to server
@@ -297,16 +315,19 @@ void put_task(in_addr_t ip, unsigned short port, std::string file_name)
 				} 
 				else if(len == 0){
 				  	printf("server closed connection\n");
+				  	log_msg("server closed connection\n");
 				  	break;
 				}
 				offset -= read_size;
 			}
-			printf("put finished\n");
+			// printf("put finished\n");
+			log_msg("put finished\n");
 			close(file_fd);
 			free(buffer);
 		}
 		else {
-			printf("Received unexpected type of protocol.\n");
+			// printf("Received unexpected type of protocol.\n");
+			log_msg("Received unexpected type of protocol.\n");
 		}
 	}
 

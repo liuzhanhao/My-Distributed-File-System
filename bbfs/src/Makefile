@@ -90,11 +90,12 @@ CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__installdirs = "$(DESTDIR)$(bindir)"
 PROGRAMS = $(bin_PROGRAMS)
-am_bbfs_OBJECTS = bbfs.$(OBJEXT) log.$(OBJEXT)
+am_bbfs_OBJECTS = bbfs.$(OBJEXT) log.$(OBJEXT) myftp.$(OBJEXT)
 bbfs_OBJECTS = $(am_bbfs_OBJECTS)
 bbfs_LDADD = $(LDADD)
 bbfs_DEPENDENCIES =
-am_myftpclient_OBJECTS = myftpclient.$(OBJEXT) myftp.$(OBJEXT)
+am_myftpclient_OBJECTS = myftpclient.$(OBJEXT) myftp.$(OBJEXT) \
+	log.$(OBJEXT)
 myftpclient_OBJECTS = $(am_myftpclient_OBJECTS)
 myftpclient_LDADD = $(LDADD)
 myftpclient_DEPENDENCIES =
@@ -269,8 +270,8 @@ target_alias =
 top_build_prefix = ../
 top_builddir = ..
 top_srcdir = ..
-bbfs_SOURCES = bbfs.cpp log.cpp log.hpp  params.hpp myftpclient.hpp
-myftpclient_SOURCES = myftpclient.cpp myftpclient.hpp myftp.hpp myftp.cpp
+bbfs_SOURCES = bbfs.cpp log.cpp log.hpp  params.hpp myftpclient.hpp myftp.hpp myftp.cpp
+myftpclient_SOURCES = myftpclient.cpp myftpclient.hpp myftp.hpp myftp.cpp log.cpp log.hpp
 myftpserver_SOURCES = myftpserver.cpp myftpserver.hpp myftp.hpp myftp.cpp
 AM_CXXFLAGS = -D_FILE_OFFSET_BITS=64 -I/usr/include/fuse  
 LDADD = -pthread -lfuse  

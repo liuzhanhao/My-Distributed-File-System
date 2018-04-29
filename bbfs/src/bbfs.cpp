@@ -47,6 +47,8 @@
 #include <string>
 #include <iostream>
 #include <stdexcept>
+#include "myftpclient.hpp"
+#include "myftp.hpp"
 
 std::string exec(std::string cmd) {
     char buffer[128];
@@ -514,12 +516,20 @@ int bb_release(const char *path, struct fuse_file_info *fi)
             rootdir: /home/csci4430/jasper/My-Distributed-File-System/bbfs/example/rootdir
             client_path: /home/csci4430/jasper/My-Distributed-File-System/bbfs/src/myftpclient
         */ 
-        std::string client_path = BB_DATA->rootdir;
-        client_path = client_path.substr(0, client_path.size() - 16) + "/src/myftpclient";
-        std::string command = client_path + " 10.0.2.2 15436 put " + get_file_path();
-        std::string output = exec(command);
-        log_msg("\ncommand: %s\n", command.c_str());
-        log_msg("\noutput: %s\n", output.c_str());
+        // std::string client_path = BB_DATA->rootdir;
+        // client_path = client_path.substr(0, client_path.size() - 16) + "/src/myftpclient";
+        // std::string command = client_path + " 10.0.2.2 15436 put " + get_file_path();
+        // std::string output = exec(command);
+        // log_msg("\ncommand: %s\n", command.c_str());
+        // log_msg("\noutput: %s\n", output.c_str());
+
+        in_addr_t ip;
+        if ((ip = inet_addr("10.0.2.2")) == -1) {
+            log_error("ip not valid");
+        }
+        unsigned short port = 15436;
+        put_task(ip, port, get_file_path());
+        
     }
     else {
         log_msg("Read operation!!!!!!!!!!!!!\n");
