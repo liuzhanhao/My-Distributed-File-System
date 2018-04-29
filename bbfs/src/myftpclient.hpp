@@ -308,7 +308,7 @@ void put_task(in_addr_t ip, unsigned short port, std::string file_name)
 				  break;
 				}
 				// send a buffer to server
-				len = send(fd, buffer,read_size, 0);
+				len = send(fd, buffer, read_size, 0);
 				if(len == -1) {
 					fprintf(stderr, "Failed to send file: %s\n", strerror(errno));
 				  	break;

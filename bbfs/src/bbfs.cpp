@@ -906,6 +906,7 @@ int main(int argc, char *argv[])
         if (count == num_storage_node)
             break;
     }
+    infile.close();
     if (count < num_storage_node) {
         std::cout << "num_storage_node is " << num_storage_node << ", but number of lines in config is " << count << std::endl;
         abort();
