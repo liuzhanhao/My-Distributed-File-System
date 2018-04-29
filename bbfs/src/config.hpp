@@ -1,6 +1,9 @@
 /* src/config.hpp.  Generated from config.hpp.in by configure.  */
 /* src/config.hpp.in.  Generated from configure.ac by autoheader.  */
 
+/* Define to 1 if you have the <arpa/inet.h> header file. */
+#define HAVE_ARPA_INET_H 1
+
 /* Define to 1 if your system has a working `chown' function. */
 #define HAVE_CHOWN 1
 
@@ -26,17 +29,26 @@
 /* Define to 1 if you have the <memory.h> header file. */
 #define HAVE_MEMORY_H 1
 
+/* Define to 1 if you have the `memset' function. */
+#define HAVE_MEMSET 1
+
 /* Define to 1 if you have the `mkdir' function. */
 #define HAVE_MKDIR 1
 
 /* Define to 1 if you have the `mkfifo' function. */
 #define HAVE_MKFIFO 1
 
+/* Define to 1 if you have the <netinet/in.h> header file. */
+#define HAVE_NETINET_IN_H 1
+
 /* Define to 1 if you have the `realpath' function. */
 #define HAVE_REALPATH 1
 
 /* Define to 1 if you have the `rmdir' function. */
 #define HAVE_RMDIR 1
+
+/* Define to 1 if you have the `socket' function. */
+#define HAVE_SOCKET 1
 
 /* Define to 1 if you have the <stdint.h> header file. */
 #define HAVE_STDINT_H 1
@@ -66,11 +78,17 @@
    `HAVE_STRUCT_STAT_ST_BLOCKS' instead. */
 #define HAVE_ST_BLOCKS 1
 
+/* Define to 1 if you have the <sys/socket.h> header file. */
+#define HAVE_SYS_SOCKET_H 1
+
 /* Define to 1 if you have the <sys/statvfs.h> header file. */
 #define HAVE_SYS_STATVFS_H 1
 
 /* Define to 1 if you have the <sys/stat.h> header file. */
 #define HAVE_SYS_STAT_H 1
+
+/* Define to 1 if you have the <sys/time.h> header file. */
+#define HAVE_SYS_TIME_H 1
 
 /* Define to 1 if you have the <sys/types.h> header file. */
 #define HAVE_SYS_TYPES_H 1

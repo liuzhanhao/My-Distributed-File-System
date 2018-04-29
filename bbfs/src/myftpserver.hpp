@@ -16,7 +16,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include "myftp.h"
+#include "myftp.hpp"
 
 pthread_mutex_t mutex;
 
@@ -153,9 +153,13 @@ void put_handler(int client_fd, int file_name_length) {
 	recv(client_fd, file_name, file_name_length, 0);
 	printf("Flie name's length: %d\n", file_name_length);
 	printf("Name of file requested by client: %s\n", file_name);
-	char* file_name_expanded = (char*) malloc(file_name_length + 5);
-	strcpy(file_name_expanded, "data/");
-	strcat(file_name_expanded, file_name);
+	// char* file_name_expanded = (char*) malloc(file_name_length + 5);
+	// strcpy(file_name_expanded, "data/");
+	// strcat(file_name_expanded, file_name);
+	std::string real_file_name = file_name;
+	std::size_t found = real_file_name.find_last_of("/");
+	real_file_name = real_file_name.substr(found + 1);
+	std::string file_name_expanded = "data/" + real_file_name;
 
 	// PUT_REPLY
 	struct message_s send_msg;
@@ -183,14 +187,14 @@ void put_handler(int client_fd, int file_name_length) {
 		FILE *received_file;
 		int buffer_size = 1024;
 		char* buffer = (char*) malloc(buffer_size);
-		received_file = fopen(file_name_expanded, "wb");
+		received_file = fopen(file_name_expanded.c_str(), "wb");
 		if (received_file == NULL)
 		{
 			fprintf(stderr, "Failed to open file: %s\n", strerror(errno));
 			exit(1);
 		}
 
-		free(file_name_expanded);
+		// free(file_name_expanded);
 		free(file_name);
 
 		long long remaining_size = file_size;
@@ -327,44 +331,4 @@ void main_loop(unsigned short port)
 
 		printf("I am main.\n");
 	}
-}
-
-
-int main(int argc, char **argv)
-{
-	unsigned short port;
-
-	if(argc != 2)
-	{
-		fprintf(stderr, "Usage: %s [port]\n", argv[0]);
-		exit(1);
-	}
-
-	port = atoi(argv[1]);
-
-	DIR* dir = opendir("data");
-	if (dir)
-	{
-	    /* Directory data/ exists. */
-	    closedir(dir);
-	}
-	else if (ENOENT == errno)
-	{
-	    /* Directory data/ does not exist, create it. */
-	    const int dir_err = mkdir("data", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
-		if (-1 == dir_err)
-		{
-		    printf("Error creating directory data/\n");
-		    exit(1);
-		}
-	}
-	else
-	{
-	    printf("Error checking directory data/\n");
-	    exit(1);
-	}
-
-	main_loop(port);
-
-	return 0;
 }

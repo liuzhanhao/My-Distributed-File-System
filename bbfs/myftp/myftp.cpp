@@ -9,7 +9,7 @@
 #include <netinet/in.h> // "struct sockaddr_in"
 #include <arpa/inet.h>  // "in_addr_t"
 #include <errno.h>
-#include "myftp.h"
+#include "myftp.hpp"
 
 int sendn(int sd, struct message_s *buf, int buf_len) {
     int n_left = buf_len;

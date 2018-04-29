@@ -23,6 +23,7 @@
 */
 #include "config.hpp"
 #include "params.hpp"
+#include "log.hpp"
 
 #include <ctype.h>
 #include <dirent.h>
@@ -42,8 +43,31 @@
 #include <sys/xattr.h>
 #endif
 
-#include "log.hpp"
+// My functions
 #include <string>
+#include <iostream>
+#include <stdexcept>
+
+std::string exec(std::string cmd) {
+    char buffer[128];
+    std::string result = "";
+    FILE* pipe = popen(cmd.c_str(), "r");
+    if (!pipe) {
+        log_msg("popen() failed!\n");
+        throw std::runtime_error("popen() failed!");
+    }
+    try {
+        while (!feof(pipe)) {
+            if (fgets(buffer, 128, pipe) != NULL)
+                result += buffer;
+        }
+    } catch (...) {
+        pclose(pipe);
+        throw;
+    }
+    pclose(pipe);
+    return result;
+}
 
 //  All the paths I see are relative to the root of the mounted
 //  filesystem.  In order to get to the underlying filesystem, I need to
@@ -486,12 +510,16 @@ int bb_release(const char *path, struct fuse_file_info *fi)
         log_msg("Write operation!!!!!!!!!!!!!\n");
         reset_is_write();
 
-        std::string command = "../myftp/myftpclient 10.0.2.2 15436 put " + get_file_path();
-        int retstat = system(command.c_str());
-        if (retstat < 0) {
-            log_msg("System call failed, return code: %d\n", retstat);
-        }
+        /* 
+            rootdir: /home/csci4430/jasper/My-Distributed-File-System/bbfs/example/rootdir
+            client_path: /home/csci4430/jasper/My-Distributed-File-System/bbfs/src/myftpclient
+        */ 
+        std::string client_path = BB_DATA->rootdir;
+        client_path = client_path.substr(0, client_path.size() - 16) + "/src/myftpclient";
+        std::string command = client_path + " 10.0.2.2 15436 put " + get_file_path();
+        std::string output = exec(command);
         log_msg("\ncommand: %s\n", command.c_str());
+        log_msg("\noutput: %s\n", output.c_str());
     }
     else {
         log_msg("Read operation!!!!!!!!!!!!!\n");

@@ -5,6 +5,8 @@ AC_PREREQ([2.69])
 AC_INIT([fuse-tutorial], [2017-10-03], [joseph@pfeifferfamily.net])
 AM_INIT_AUTOMAKE
 AC_CONFIG_SRCDIR([src/bbfs.cpp])
+AC_CONFIG_SRCDIR([src/myftpclient.cpp])
+AC_CONFIG_SRCDIR([src/myftpserver.cpp])
 AC_CONFIG_HEADERS([src/config.hpp])
 
 # Checks for programs.
@@ -13,7 +15,7 @@ AC_CONFIG_HEADERS([src/config.hpp])
 AC_PROG_CXX
 
 # Checks for header files.
-AC_CHECK_HEADERS([fcntl.h limits.h stdlib.h string.h sys/statvfs.h unistd.h utime.h sys/xattr.h])
+AC_CHECK_HEADERS([fcntl.h limits.h stdlib.h string.h sys/statvfs.h unistd.h utime.h sys/xattr.h arpa/inet.h netinet/in.h sys/socket.h sys/time.h])
 
 # Check for FUSE development environment
 PKG_CHECK_MODULES(FUSE, fuse)
@@ -33,7 +35,7 @@ AC_TYPE_UINT64_T
 AC_FUNC_CHOWN
 AC_FUNC_LSTAT_FOLLOWS_SLASHED_SYMLINK
 AC_FUNC_MALLOC
-AC_CHECK_FUNCS([ftruncate mkdir mkfifo realpath rmdir strerror utime])
+AC_CHECK_FUNCS([ftruncate mkdir mkfifo realpath rmdir strerror utime memset socket])
 
 # Not all systems that support FUSE also support fdatasync (notably freebsd)
 AC_CHECK_FUNCS([fdatasync])
