@@ -188,7 +188,7 @@ CPP = gcc -E
 CPPFLAGS = 
 CXX = g++
 CXXDEPMODE = depmode=gcc3
-CXXFLAGS = -g -O2
+CXXFLAGS =  -std=c++0x
 CYGPATH_W = echo
 DEFS = -DHAVE_CONFIG_H
 DEPDIR = .deps
@@ -270,7 +270,7 @@ target_alias =
 top_build_prefix = ../
 top_builddir = ..
 top_srcdir = ..
-bbfs_SOURCES = bbfs.cpp log.cpp log.hpp  params.hpp myftpclient.hpp myftp.hpp myftp.cpp
+bbfs_SOURCES = bbfs.hpp bbfs.cpp log.cpp log.hpp  params.hpp myftpclient.hpp myftp.hpp myftp.cpp
 myftpclient_SOURCES = myftpclient.cpp myftpclient.hpp myftp.hpp myftp.cpp log.cpp log.hpp
 myftpserver_SOURCES = myftpserver.cpp myftpserver.hpp myftp.hpp myftp.cpp
 AM_CXXFLAGS = -D_FILE_OFFSET_BITS=64 -I/usr/include/fuse  

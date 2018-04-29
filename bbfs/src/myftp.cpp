@@ -1,14 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <signal.h>
-#include <sys/time.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netinet/in.h> // "struct sockaddr_in"
-#include <arpa/inet.h>  // "in_addr_t"
-#include <errno.h>
 #include "myftp.hpp"
 
 int sendn(int sd, struct message_s *buf, int buf_len) {
@@ -77,4 +66,10 @@ int recvn(int sd, char *buf, int buf_len) {
         n_left -= n;
     }
     return buf_len;
+}
+
+std::string get_relative_path(char * filename) {
+    std::string real_file_name = filename;
+    std::size_t found = real_file_name.find_last_of("/");
+    return real_file_name.substr(found + 1);
 }

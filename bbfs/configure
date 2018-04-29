@@ -2989,6 +2989,7 @@ ac_config_headers="$ac_config_headers src/config.hpp"
 # Checks for programs.
 # AC_PROG_CC
 # Jasper's config
+CXXFLAGS="$CXXFLAGS -std=c++0x"
 ac_ext=cpp
 ac_cpp='$CXXCPP $CPPFLAGS'
 ac_compile='$CXX -c $CXXFLAGS $CPPFLAGS conftest.$ac_ext >&5'

@@ -1,75 +1,4 @@
-/*
-  Big Brother File System
-  Copyright (C) 2012 Joseph J. Pfeiffer, Jr., Ph.D. <pfeiffer@cs.nmsu.edu>
-
-  This program can be distributed under the terms of the GNU GPLv3.
-  See the file COPYING.
-
-  This code is derived from function prototypes found /usr/include/fuse/fuse.h
-  Copyright (C) 2001-2007  Miklos Szeredi <miklos@szeredi.hu>
-  His code is licensed under the LGPLv2.
-  A copy of that code is included in the file fuse.h
-  
-  The point of this FUSE filesystem is to provide an introduction to
-  FUSE.  It was my first FUSE filesystem as I got to know the
-  software; hopefully, the comments in this code will help people who
-  follow later to get a gentler introduction.
-
-  This might be called a no-op filesystem:  it doesn't impose
-  filesystem semantics on top of any other existing structure.  It
-  simply reports the requests that come in, and passes them to an
-  underlying filesystem.  The information is saved in a logfile named
-  bbfs.log, in the directory from which you run bbfs.
-*/
-#include "config.hpp"
-#include "params.hpp"
-#include "log.hpp"
-
-#include <ctype.h>
-#include <dirent.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <fuse.h>
-#include <libgen.h>
-#include <limits.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-
-#ifdef HAVE_SYS_XATTR_H
-#include <sys/xattr.h>
-#endif
-
-// My functions
-#include <string>
-#include <iostream>
-#include <stdexcept>
-#include "myftpclient.hpp"
-#include "myftp.hpp"
-
-std::string exec(std::string cmd) {
-    char buffer[128];
-    std::string result = "";
-    FILE* pipe = popen(cmd.c_str(), "r");
-    if (!pipe) {
-        log_msg("popen() failed!\n");
-        throw std::runtime_error("popen() failed!");
-    }
-    try {
-        while (!feof(pipe)) {
-            if (fgets(buffer, 128, pipe) != NULL)
-                result += buffer;
-        }
-    } catch (...) {
-        pclose(pipe);
-        throw;
-    }
-    pclose(pipe);
-    return result;
-}
+#include "bbfs.hpp"
 
 //  All the paths I see are relative to the root of the mounted
 //  filesystem.  In order to get to the underlying filesystem, I need to
@@ -84,37 +13,6 @@ static void bb_fullpath(char fpath[PATH_MAX], const char *path)
 
     log_msg("    bb_fullpath:  rootdir = \"%s\", path = \"%s\", fpath = \"%s\"\n",
         BB_DATA->rootdir, path, fpath);
-}
-
-// My functions
-std::string file_path;
-int is_write = 0;
-
-static void set_file_path(char fpath[PATH_MAX]) {
-    // set file path
-    file_path = fpath;
-}
-
-std::string get_file_path(){
-    return file_path;
-}
-
-int get_file_size(int fd) {
-    struct stat buf;
-    fstat(fd, &buf);
-    return buf.st_size;
-}
-
-static void set_is_write() {
-    is_write = 1;
-}
-
-static void reset_is_write() {
-    is_write = 0;
-}
-
-static int get_is_write() {
-    return is_write;
 }
 
 ///////////////////////////////////////////////////////////
@@ -523,13 +421,12 @@ int bb_release(const char *path, struct fuse_file_info *fi)
         // log_msg("\ncommand: %s\n", command.c_str());
         // log_msg("\noutput: %s\n", output.c_str());
 
-        in_addr_t ip;
-        if ((ip = inet_addr("10.0.2.2")) == -1) {
-            log_error("ip not valid");
-        }
-        unsigned short port = 15436;
-        put_task(ip, port, get_file_path());
-        
+        log_msg("Sending file to %d storage nodes...\n\n", storage_nodes.size());
+        for (auto node : storage_nodes)
+            put_task(node.ip, node.port, get_file_path());
+
+        // TODO: delete the file in rootdir ( get_file_path() )
+        log_msg("Finished sending file to %d storage nodes...\n", storage_nodes.size());
     }
     else {
         log_msg("Read operation!!!!!!!!!!!!!\n");
@@ -956,7 +853,7 @@ static const struct fuse_operations bb_oper = {
 
 void bb_usage()
 {
-    fprintf(stderr, "usage:  bbfs [FUSE and mount options] rootDir mountPoint tmpdir\n");
+    fprintf(stderr, "usage:  bbfs [FUSE and mount options] rootDir mountPoint theta\n");
     abort();
 }
 
@@ -981,6 +878,42 @@ int main(int argc, char *argv[])
 
     // See which version of fuse we're running
     fprintf(stderr, "Fuse library version %d.%d\n", FUSE_MAJOR_VERSION, FUSE_MINOR_VERSION);
+
+    // Check datanodes file exist
+    std::string line;
+    std::ifstream infile("storagenodes.conf");
+    if (infile.fail()) {
+        std::cout << "storagenodes.conf not exist, please create it first" << std::endl;
+        abort();
+    }
+    std::getline(infile, line);
+    num_storage_node = stoi(line);
+    fprintf(stderr, "num_storage_node: %d\n", num_storage_node);
+    int count = 0;
+    while (std::getline(infile, line)) {
+        count++;
+        in_addr_t ip = inet_addr(line.substr(0, line.find(' ')).c_str());
+        if (ip == -1) {
+            std::cout << "Invalid ip: " << line << std::endl;
+            abort();
+        }
+        unsigned short port = stoi(line.substr(line.find(' ')));
+        if (port < 0 || port > 65535) {
+            std::cout << "Invalid ip: " << line << std::endl;
+            abort();
+        }
+        storage_nodes.push_back({ip, port});
+        if (count == num_storage_node)
+            break;
+    }
+    if (count < num_storage_node) {
+        std::cout << "num_storage_node is " << num_storage_node << ", but number of lines in config is " << count << std::endl;
+        abort();
+    }
+
+    std::cout << "there are total " << storage_nodes.size() << " storage nodes (ip port): " << std::endl;
+    for (auto node : storage_nodes)
+        std::cout << inet_ntoa(*(struct in_addr *)&node.ip) << " " << node.port << std::endl;
     
     // Perform some sanity checking on the command line:  make sure
     // there are enough arguments, and that neither of the last two
@@ -988,12 +921,12 @@ int main(int argc, char *argv[])
     // rootpoint or mountpoint whose name starts with a hyphen, but so
     // will a zillion other programs)
     if ((argc < 3) || (argv[argc-2][0] == '-') || (argv[argc-1][0] == '-'))
-    bb_usage();
+        bb_usage();
 
     bb_data = (struct bb_state *) malloc(sizeof(struct bb_state));
     if (bb_data == NULL) {
-    perror("main calloc");
-    abort();
+        perror("main calloc");
+        abort();
     }
 
     // Pull the rootdir out of the argument list and save it in my

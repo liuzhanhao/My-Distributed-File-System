@@ -156,10 +156,7 @@ void put_handler(int client_fd, int file_name_length) {
 	// char* file_name_expanded = (char*) malloc(file_name_length + 5);
 	// strcpy(file_name_expanded, "data/");
 	// strcat(file_name_expanded, file_name);
-	std::string real_file_name = file_name;
-	std::size_t found = real_file_name.find_last_of("/");
-	real_file_name = real_file_name.substr(found + 1);
-	std::string file_name_expanded = "data/" + real_file_name;
+	std::string file_name_expanded = "data/" + get_relative_path(file_name);
 
 	// PUT_REPLY
 	struct message_s send_msg;

@@ -207,7 +207,7 @@ void put_task(in_addr_t ip, unsigned short port, std::string file_name)
 {
 	char* file_name_cstr = (char*) file_name.c_str();
 	// printf("Try to put file: %s\n", file_name_cstr);
-	log_msg("Try to put file: %s\n", file_name_cstr);
+	log_msg("Try to put file: %s\n", get_relative_path(file_name_cstr).c_str());
 
 	if( access( file_name_cstr, F_OK ) == -1 ) {
 		// file does not exist locally
@@ -321,7 +321,7 @@ void put_task(in_addr_t ip, unsigned short port, std::string file_name)
 				offset -= read_size;
 			}
 			// printf("put finished\n");
-			log_msg("put finished\n");
+			log_msg("put finished\n\n");
 			close(file_fd);
 			free(buffer);
 		}

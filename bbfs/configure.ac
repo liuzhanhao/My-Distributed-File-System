@@ -12,6 +12,7 @@ AC_CONFIG_HEADERS([src/config.hpp])
 # Checks for programs.
 # AC_PROG_CC
 # Jasper's config
+CXXFLAGS="$CXXFLAGS -std=c++0x"
 AC_PROG_CXX
 
 # Checks for header files.
