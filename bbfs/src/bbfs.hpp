@@ -66,7 +66,25 @@ std::vector<node> storage_nodes; //
 std::string file_path; // set current open file_path (absolute)
 bool is_write = false; // write or read opeartion
 // int theta = 4194305; // theta, raid5 or replicates
-int theta = 0;
+int theta = 4194305;
+int cur_num_of_read = 0;
+
+
+//  All the paths I see are relative to the root of the mounted
+//  filesystem.  In order to get to the underlying filesystem, I need to
+//  have the mountpoint.  I'll save it away early on in main(), and then
+//  whenever I need a path for something I'll call this to construct
+//  it.
+static void bb_fullpath(char fpath[PATH_MAX], const char *path)
+{
+    strcpy(fpath, BB_DATA->rootdir);
+    strncat(fpath, path, PATH_MAX); // ridiculously long paths will
+                    // break here
+
+    log_msg("    bb_fullpath:  rootdir = \"%s\", path = \"%s\", fpath = \"%s\"\n",
+        BB_DATA->rootdir, path, fpath);
+}
+
 
 // My functions
 static void set_file_path(char fpath[PATH_MAX]) {
@@ -84,11 +102,18 @@ int get_local_file_size(int fd) {
     return buf.st_size;
 }
 
-size_t get_remote_file_size(const char* path) {
-    // try to get path-size from any datanode
-    // read file_size from path-size
-    // delete the path-size file
-    // return file size
+int get_real_file_size(std::string file_name) {
+    std::ifstream is_size(file_name);
+    if (!is_size.good()) {
+        log_msg("[get_real_file_size] Can't open file: %s\n", file_name.c_str());
+        return -1;
+    }
+    // get length of file:
+    std::string line;
+    std::getline(is_size, line);
+    int file_size = stoi(line);
+    is_size.close();
+    return file_size;
 }
 
 static void set_is_write() {
@@ -142,15 +167,10 @@ void split(std::string original_name, int n) {
       os.write(&raid5_buf[0], last_chunk_size);
       os.close();
 
-      /* 
-        write file_size into a file, this file should be stored in the raid-5 node
-        because we need file_size to calculate the broke_chunk's size when 
-        recovering using raid-5
-      */
-      file_name = original_name + "-size";
-      std::ofstream os_size(file_name);
-      os_size << length;
-      os_size.close();
+      // file_name = original_name + "-size";
+      // std::ofstream os_size(file_name);
+      // os_size << length;
+      // os_size.close();
 
       if (is)
         log_msg("all characters read successfully.\n");
@@ -206,12 +226,7 @@ void recover(std::string original_name, std::string new_name, int n, int broke_c
 
   // find the size of the broke_chunk
   std::string size_file = original_name + "-size";
-  std::ifstream is_size(size_file);
-  // get length of file:
-  std::string line;
-    std::getline(is_size, line);
-    int file_size = stoi(line);
-  is_size.close();
+  int file_size = get_real_file_size(size_file);
   log_msg("file_size: %d\n", file_size);
   int chunk_size = file_size / n;
 

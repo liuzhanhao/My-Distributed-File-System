@@ -68,8 +68,7 @@ int recvn(int sd, char *buf, int buf_len) {
     return buf_len;
 }
 
-std::string get_relative_path(char * filename) {
-    std::string real_file_name = filename;
-    std::size_t found = real_file_name.find_last_of("/");
-    return real_file_name.substr(found + 1);
+std::string get_relative_path(std::string filename) {
+    std::size_t found = filename.find_last_of("/");
+    return filename.substr(found + 1);
 }

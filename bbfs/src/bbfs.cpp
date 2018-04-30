@@ -1,20 +1,5 @@
 #include "bbfs.hpp"
 
-//  All the paths I see are relative to the root of the mounted
-//  filesystem.  In order to get to the underlying filesystem, I need to
-//  have the mountpoint.  I'll save it away early on in main(), and then
-//  whenever I need a path for something I'll call this to construct
-//  it.
-static void bb_fullpath(char fpath[PATH_MAX], const char *path)
-{
-    strcpy(fpath, BB_DATA->rootdir);
-    strncat(fpath, path, PATH_MAX); // ridiculously long paths will
-                    // break here
-
-    log_msg("    bb_fullpath:  rootdir = \"%s\", path = \"%s\", fpath = \"%s\"\n",
-        BB_DATA->rootdir, path, fpath);
-}
-
 ///////////////////////////////////////////////////////////
 //
 // Prototypes for all these functions, and the C-style comments,
@@ -291,6 +276,40 @@ int bb_open(const char *path, struct fuse_file_info *fi)
 int bb_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_file_info *fi)
 {
     int retstat = 0;
+
+    // my functions
+    cur_num_of_read++;
+    // load data from remote first
+    if (cur_num_of_read == 1) {
+        log_msg("\n------------------------------------------\n");
+        log_msg("Pulling file from remote storage nodes...\n\n");
+        std::string file_name = get_file_path();
+        int file_size = get_real_file_size(file_name);
+        // Delete file with filename
+        retstat = log_syscall("close", close(fi->fh), 0);
+        if(remove(file_name.c_str()) != 0)
+            log_msg("Can't remove file %s!!!!\n", file_name.c_str());
+
+        // Read real file from storage nodes
+        if (file_size > theta) {
+            // TODO: read from n nodes and merge
+        }
+        else {
+            // TODO: read from any available node
+            int status = get_task(storage_nodes[0].ip, storage_nodes[0].port, file_name);
+            if (status < 0) {
+                log_msg("[bb_read] get_task failed!!!\n");
+                abort();
+            }
+        }
+
+        int fd = log_syscall("open", open(file_name.c_str(), fi->flags), 0);
+        if (fd < 0)
+            retstat = log_error("[bb_read] open");
+        fi->fh = fd;
+        log_msg("\n\nFinished pulling file from remote storage nodes...");
+        log_msg("\n------------------------------------------\n");
+    }
     
     log_msg("\nbb_read(path=\"%s\", buf=0x%08x, size=%d, offset=%lld, fi=0x%08x)\n",
         path, buf, size, offset, fi);
@@ -398,65 +417,98 @@ int bb_flush(const char *path, struct fuse_file_info *fi)
  */
 int bb_release(const char *path, struct fuse_file_info *fi)
 {
+    cur_num_of_read = 0;
+
+    int retstat = 0;
     int size = get_local_file_size(fi->fh);
 
     log_msg("\nbb_release(path=\"%s\", file_size=%d, fi=0x%08x)\n",
       path, size, fi);
     log_fi(fi);
 
+    std::string file_name = get_file_path();
     // Check write or read
     log_msg("\n------------------------------------------\n");
     if (get_is_write()) {
         log_msg("Write operation!!!!!!!!!!!!!\n");
         reset_is_write();
 
-        /* 
-            rootdir: /home/csci4430/jasper/My-Distributed-File-System/bbfs/example/rootdir
-            client_path: /home/csci4430/jasper/My-Distributed-File-System/bbfs/src/myftpclient
-        */ 
-        // std::string client_path = BB_DATA->rootdir;
-        // client_path = client_path.substr(0, client_path.size() - 16) + "/src/myftpclient";
-        // std::string command = client_path + " 10.0.2.2 15436 put " + get_file_path();
-        // std::string output = exec(command);
-        // log_msg("\ncommand: %s\n", command.c_str());
-        // log_msg("\noutput: %s\n", output.c_str());
-
-        std::string file_name = get_file_path();
+        // rootdir: /home/csci4430/jasper/My-Distributed-File-System/bbfs/example/rootdir
+        bool greater_than_theta;
         // > theta
         if (size > theta) {
+            greater_than_theta = true;
             log_msg("Spliting file into %d chunks + 1 raid5 chunk...\n", storage_nodes.size()-1);
             log_msg("Sending file to %d storage nodes...\n\n", storage_nodes.size());
             split(file_name, num_storage_node - 1);
 
-            std::string size_name = file_name + "-size";
             for (int i = 0; i < num_storage_node; i++) {
                 std::string chunk_name = file_name + "-part" + std::to_string(i);
                 if (i == num_storage_node - 1)
                     chunk_name = file_name + "-raid5";
-                put_task(storage_nodes[i].ip, storage_nodes[i].port, chunk_name);
-                put_task(storage_nodes[i].ip, storage_nodes[i].port, size_name);
+                int status = put_task(storage_nodes[i].ip, storage_nodes[i].port, chunk_name);
+                if (status < 0)
+                    log_msg("put_task failed!!!\n");
             }
-            // TODO: delete all files in rootdir
+            // Delete all files in rootdir
+            retstat = log_syscall("close", close(fi->fh), 0);
+            if(remove(file_name.c_str()) != 0)
+                log_msg("Can't remove file %s!!!!\n", file_name.c_str());
+            for (int i = 0; i < num_storage_node; i++) {
+                std::string chunk_name = file_name + "-part" + std::to_string(i);
+                if (i == num_storage_node - 1)
+                    chunk_name = file_name + "-raid5";
+                if(remove(chunk_name.c_str()) != 0)
+                    log_msg("Can't remove file %s!!!!\n", chunk_name.c_str());
+            }
+            // Create file with file_name, which store only the file size
+            std::ofstream os_size(file_name);
+            os_size << size;
+            os_size.close();
         }
-
         // < theta
         else {
+            greater_than_theta = false;
             log_msg("Sending file to %d storage nodes...\n\n", storage_nodes.size());
-            for (auto node : storage_nodes)
-                put_task(node.ip, node.port, file_name);
-
-            // TODO: delete the file in rootdir ( get_file_path() )
+            for (auto node : storage_nodes) {
+                int status = put_task(node.ip, node.port, file_name);
+                if (status < 0)
+                    log_msg("put_task failed!!!\n");
+            }
         }
+        // Delete all files in rootdir
+        retstat = log_syscall("close", close(fi->fh), 0);
+        if(remove(file_name.c_str()) != 0)
+            log_msg("Can't remove file %s!!!!\n", file_name.c_str());
+        if (greater_than_theta) {
+            for (int i = 0; i < num_storage_node; i++) {
+                std::string chunk_name = file_name + "-part" + std::to_string(i);
+                if (i == num_storage_node - 1)
+                    chunk_name = file_name + "-raid5";
+                if(remove(chunk_name.c_str()) != 0)
+                    log_msg("Can't remove file %s!!!!\n", chunk_name.c_str());
+            }
+        }
+        // Create file with file_name, which store only the file size
+        std::ofstream os_size(file_name);
+        os_size << size;
+        os_size.close();
+
         log_msg("Finished sending file to %d storage nodes...\n", storage_nodes.size());
     }
     else {
         log_msg("Read operation!!!!!!!!!!!!!\n");
+        // read file size from filename
+        // int file_size = get_real_file_size(file_name);
+        log_msg("file_name: %s\n", file_name.c_str());
+
+        
     }
     log_msg("------------------------------------------\n");
 
     // We need to close the file.  Had we allocated any resources
     // (buffers etc) we'd need to free them here as well.
-    return log_syscall("close", close(fi->fh), 0);
+    return retstat;
 }
 
 /** Synchronize file contents

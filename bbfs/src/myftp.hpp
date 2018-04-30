@@ -28,6 +28,6 @@ int sendn(int sd, char *buf, int buf_len);
 
 int recvn(int sd, char *buf, int buf_len);
 
-std::string get_relative_path(char * filename);
+std::string get_relative_path(std::string filename);
 
 #endif // MYFTP_H_
