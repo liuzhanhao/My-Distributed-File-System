@@ -154,6 +154,128 @@ void split(std::string original_name, int n) {
   }
 }
 
+void merge(string original_name, std::string new_name, int n) {
+  std::ofstream os(new_name, std::ofstream::binary);
+  if (os) {
+      // read file chunk
+      for (int i = 0; i < n; i++) {
+        std::string file_name = original_name + "-part" + std::to_string(i);
+        std::ifstream is(file_name, std::ifstream::binary);
+
+        // get length of file:
+        is.seekg (0, is.end);
+        int length = is.tellg();
+        is.seekg (0);
+        log_msg("file length: %d\n", length);
+        
+        std::string buf;
+        buf.resize(length);
+        is.read(&buf[0], length);
+
+        os.write(&buf[0], length);
+        is.close();
+      }
+      os.close();
+  }
+}
+
+// broke_chunk: the index of the chunk which is broken, which will be skipped in recover
+void recover(std::string original_name, std::string new_name, int n, int broke_chunk) {
+  std::ofstream os(new_name, std::ofstream::binary);
+
+  // read raid-5 file
+  std::string raid5_file = original_name + "-raid5";
+  std::ifstream is_raid5(raid5_file, std::ifstream::binary);
+  // get length of file:
+  is_raid5.seekg (0, is_raid5.end);
+  int last_chunk_size = is_raid5.tellg();
+  is_raid5.seekg (0);
+  log_msg("last_chunk_size: %d\n", last_chunk_size);
+  // read raid-5 file into buf
+  std::string raid5_buf;
+  raid5_buf.resize(last_chunk_size);
+  is_raid5.read(&raid5_buf[0], last_chunk_size);
+  is_raid5.close();
+
+  // find the size of the broke_chunk
+  std::string size_file = original_name + "-size";
+  std::ifstream is_size(size_file);
+  // get length of file:
+  std::string line;
+    std::getline(is_size, line);
+    int file_size = stoi(line);
+  is_size.close();
+  log_msg("file_size: %d\n", file_size);
+  int chunk_size = file_size / n;
+
+  if (os) {
+      // read file chunk for 0 to broke_chunk - 1
+      for (int i = 0; i < broke_chunk; i++) {
+        std::string file_name = original_name + "-part" + std::to_string(i);
+        std::ifstream is(file_name, std::ifstream::binary);
+
+        // get length of file:
+        is.seekg (0, is.end);
+        int length = is.tellg();
+        is.seekg (0);
+        log_msg("%s  length: %d\n", file_name, length);
+        
+        std::string buf;
+        buf.resize(length);
+        is.read(&buf[0], length);
+
+        // raid 5
+        for (int j = 0; j < length; j++)
+          raid5_buf[j] ^= buf[j];
+
+        os.write(&buf[0], length);
+        is.close();
+      }
+      // vector of string for broke_chunk + 1 to n-1
+      std::vector<std::string> v;
+      for (int i = broke_chunk + 1; i < n; i++) {
+        std::string file_name = original_name + "-part" + std::to_string(i);
+        std::ifstream is(file_name, std::ifstream::binary);
+
+        // get length of file:
+        is.seekg (0, is.end);
+        int length = is.tellg();
+        is.seekg (0);
+        log_msg("%s  length: %d\n", file_name, length);
+        
+        std::string buf;
+        buf.resize(length);
+        is.read(&buf[0], length);
+        v.push_back(buf);
+
+        // raid 5
+        for (int j = 0; j < length; j++)
+          raid5_buf[j] ^= buf[j];
+
+        is.close();
+      }
+      // write broke chunk
+      // check if broke_chunk's size equals raid5_buf's size
+      if (broke_chunk != n - 1){
+        raid5_buf = raid5_buf.substr(0, chunk_size);
+        os.write(&raid5_buf[0], chunk_size);
+      }
+      else {
+        os.write(&raid5_buf[0], last_chunk_size);
+      }
+      // write the remaining chunks (for broke_chunk+1 to n-1)
+      for (int i = broke_chunk + 1; i < n; i++) {
+        if (i < n - 1) {
+          os.write(&v[i-broke_chunk-1][0], chunk_size);
+        }
+        else {
+          os.write(&v[i-broke_chunk-1][0], last_chunk_size);
+        }
+      }
+      os.close();
+  }
+}
+
 std::string exec(std::string cmd) {
     std::array<char, 128> buffer;
     std::string result;

@@ -182,21 +182,21 @@ void recover(string original_name, string new_name, int n, int broke_chunk) {
 	}
 }
 
-// int main(int argc, char** argv) {
-// 	string original_name = "foo.jpg";
-// 	int n = 3;
-// 	if (strcmp(argv[1], "split") == 0) {
-// 		cout << "spliting foo.jpg" << endl;
-// 		split(original_name, n);
-// 	}
-// 	else if (strcmp(argv[1], "merge") == 0) {
-// 		cout << "merging foo.jpg" << endl;
-// 		merge(original_name, "merge", n);
-// 	}
-// 	else if (strcmp(argv[1], "recover") == 0) {
-// 		cout << "recovering foo.jpg" << endl;
-// 		recover(original_name, "recover", n, 0);
-// 	}
-// 	else
-// 		cout << "invalid command" << endl;
-// }
+int main(int argc, char** argv) {
+	string original_name = argv[2];
+	int n = 3;
+	if (strcmp(argv[1], "split") == 0) {
+		cout << "spliting " << original_name << endl;
+		split(original_name, n);
+	}
+	else if (strcmp(argv[1], "merge") == 0) {
+		cout << "merging " << original_name << endl;
+		merge(original_name, "merge", n);
+	}
+	else if (strcmp(argv[1], "recover") == 0) {
+		cout << "recovering " << original_name << endl;
+		recover(original_name, "recover", n, 0);
+	}
+	else
+		cout << "invalid command" << endl;
+}
