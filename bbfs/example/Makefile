@@ -1,7 +1,7 @@
 all:
 	mkdir -p mountdir
 	mkdir -p rootdir
-	echo "bogus file" > rootdir/bogus.txt
+	#echo "bogus file" > rootdir/bogus.txt
 
 distdir:
 	cp Makefile $(distdir)

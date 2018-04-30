@@ -67,7 +67,7 @@ std::vector<node> storage_nodes; //
 std::string file_path; // set current open file_path (absolute)
 bool is_write = false; // write or read opeartion
 // int theta = 4194305; // theta, raid5 or replicates
-int theta = 4194303;
+int theta = 4194305;
 int cur_num_of_read = 0;
 std::mutex mtx; // you can use std::lock_guard if you want to be exception safe
 int my_fd;
@@ -184,6 +184,8 @@ void split(std::string original_name, int n) {
   }
 }
 
+// n is the number of datanodes that with real data chunk, not raid5 chunk
+// so n = num_of_datanode - 1
 void merge(std::string original_name, std::string new_name, int n) {
   std::ofstream os(new_name, std::ofstream::binary);
   if (os) {
