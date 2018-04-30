@@ -66,8 +66,7 @@ int num_storage_node;
 std::vector<node> storage_nodes; //
 std::string file_path; // set current open file_path (absolute)
 bool is_write = false; // write or read opeartion
-// int theta = 4194305; // theta, raid5 or replicates
-int theta = 4194305;
+int theta = 4194305; // theta, raid5 or replicates
 int cur_num_of_read = 0;
 std::mutex mtx; // you can use std::lock_guard if you want to be exception safe
 int my_fd;
@@ -212,28 +211,23 @@ void merge(std::string original_name, std::string new_name, int n) {
 }
 
 // broke_chunk: the index of the chunk which is broken, which will be skipped in recover
-void recover(std::string original_name, std::string new_name, int n, int broke_chunk) {
+void recover(std::string original_name, std::string new_name, int n, int broke_chunk, int file_size) {
   std::ofstream os(new_name, std::ofstream::binary);
 
   // read raid-5 file
   std::string raid5_file = original_name + "-raid5";
   std::ifstream is_raid5(raid5_file, std::ifstream::binary);
-  // get length of file:
-  is_raid5.seekg (0, is_raid5.end);
-  int last_chunk_size = is_raid5.tellg();
-  is_raid5.seekg (0);
+  int chunk_size = file_size / n;
+  int last_chunk_size = chunk_size + file_size % n;
+  log_msg("file_size: %d\n", file_size);
+  log_msg("chunk_size: %d\n", chunk_size);
   log_msg("last_chunk_size: %d\n", last_chunk_size);
+
   // read raid-5 file into buf
   std::string raid5_buf;
   raid5_buf.resize(last_chunk_size);
   is_raid5.read(&raid5_buf[0], last_chunk_size);
   is_raid5.close();
-
-  // find the size of the broke_chunk
-  std::string size_file = original_name + "-size";
-  int file_size = get_real_file_size(size_file);
-  log_msg("file_size: %d\n", file_size);
-  int chunk_size = file_size / n;
 
   if (os) {
       // read file chunk for 0 to broke_chunk - 1
@@ -241,10 +235,7 @@ void recover(std::string original_name, std::string new_name, int n, int broke_c
         std::string file_name = original_name + "-part" + std::to_string(i);
         std::ifstream is(file_name, std::ifstream::binary);
 
-        // get length of file:
-        is.seekg (0, is.end);
-        int length = is.tellg();
-        is.seekg (0);
+        int length = (i == n-1) ? last_chunk_size : chunk_size;
         log_msg("%s  length: %d\n", file_name.c_str(), length);
         
         std::string buf;
@@ -264,10 +255,7 @@ void recover(std::string original_name, std::string new_name, int n, int broke_c
         std::string file_name = original_name + "-part" + std::to_string(i);
         std::ifstream is(file_name, std::ifstream::binary);
 
-        // get length of file:
-        is.seekg (0, is.end);
-        int length = is.tellg();
-        is.seekg (0);
+        int length = (i == n-1) ? last_chunk_size : chunk_size;
         log_msg("%s  length: %d\n", file_name.c_str(), length);
         
         std::string buf;
@@ -301,19 +289,4 @@ void recover(std::string original_name, std::string new_name, int n, int broke_c
       }
       os.close();
   }
-}
-
-std::string exec(std::string cmd) {
-    std::array<char, 128> buffer;
-    std::string result;
-    std::shared_ptr<FILE> pipe(popen(cmd.c_str(), "r"), pclose);
-    if (!pipe) {
-        log_msg("popen() failed!\n");
-        throw std::runtime_error("popen() failed!");
-    }
-    while (!feof(pipe.get())) {
-        if (fgets(buffer.data(), 128, pipe.get()) != nullptr)
-            result += buffer.data();
-    }
-    return result;
 }

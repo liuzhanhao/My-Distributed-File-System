@@ -331,7 +331,26 @@ int bb_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
                     }
                 }
                 else { // One broke_chunk, read raid-5 chunk to recover the chunk and merge
-
+                    std::string raid5_file = file_name + "-raid5";
+                    int status = get_task(storage_nodes[num_storage_node-1].ip, storage_nodes[num_storage_node-1].port, raid5_file);
+                    if (status < 0) {
+                        // Cannot get raid5 chunk either, fail, remove file_name-part*
+                        read_success = false;
+                    }
+                    else { // Get raid-5 chunk success, recover 
+                        recover(file_name, file_name, num_storage_node-1, broke_chunk[0], file_size);
+                        // remove file_name-raid5
+                        if(remove(raid5_file.c_str()) != 0)
+                                log_msg("Can't remove file %s!!!!\n", raid5_file.c_str());
+                    }
+                    // remove file_name-part*
+                    for (int i = 0; i < num_storage_node-1; i++) {
+                        if (i != broke_chunk[0]) {
+                            std::string chunk_name = file_name + "-part" + std::to_string(i);
+                            if(remove(chunk_name.c_str()) != 0)
+                                log_msg("Can't remove file %s!!!!\n", chunk_name.c_str());
+                        }
+                    }
                 }
             }
         }
