@@ -104,18 +104,43 @@ int get_local_file_size(int fd) {
     return buf.st_size;
 }
 
-int get_real_file_size(std::string file_name) {
-    std::ifstream is_size(file_name);
-    if (!is_size.good()) {
-        log_msg("[get_real_file_size] Can't open file: %s\n", file_name.c_str());
-        return -1;
+int get_real_file_size(const char *path) {
+    struct stat s;
+    if( stat(path, &s) == 0) {
+        if(s.st_mode & S_IFDIR) {
+          //it's a directory
+          log_msg("%s is a directory\n", path);
+          return s.st_size;
+        }
+        else if (s.st_mode & S_IFREG) {
+          //it's a file
+          log_msg("%s is a file\n", path);
+          // non-exist
+          if (s.st_size <= 0)
+            return 0;
+          // remote file (real_file_size < 10^12)
+          else if (s.st_size < 12) {
+            std::ifstream is_size(path);
+            if (!is_size.good()) {
+                log_msg("[get_real_file_size] Can't open file: %s\n", path);
+                return -1;
+            }
+            // get length of file:
+            std::string line;
+            std::getline(is_size, line);
+            int file_size = stoi(line);
+            is_size.close();
+            return file_size;
+          }
+          else {
+            return s.st_size;
+          }
+        }
+        else
+          return 0;
     }
-    // get length of file:
-    std::string line;
-    std::getline(is_size, line);
-    int file_size = stoi(line);
-    is_size.close();
-    return file_size;
+    else
+      return 0;
 }
 
 static void set_is_write() {
@@ -289,12 +314,4 @@ void recover(std::string original_name, std::string new_name, int n, int broke_c
       }
       os.close();
   }
-}
-
-bool replace(std::string& str, const std::string& from, const std::string& to) {
-    size_t start_pos = str.find(from);
-    if(start_pos == std::string::npos)
-        return false;
-    str.replace(start_pos, from.length(), to);
-    return true;
 }

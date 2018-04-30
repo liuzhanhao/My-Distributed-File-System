@@ -21,6 +21,8 @@ int bb_getattr(const char *path, struct stat *statbuf)
     bb_fullpath(fpath, path);
 
     retstat = log_syscall("lstat", lstat(fpath, statbuf), 0);
+
+    statbuf->st_size = (off_t) get_real_file_size(fpath);
     
     log_stat(statbuf);
     
@@ -288,7 +290,7 @@ int bb_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
         log_msg("\n------------------------------------------\n");
         log_msg("Pulling file from remote storage nodes...\n\n");
         std::string file_name = get_file_path();
-        int file_size = get_real_file_size(file_name);
+        int file_size = get_real_file_size(file_name.c_str());
         // Delete file with filename
         retstat = log_syscall("close", close(fi->fh), 0);
         if(remove(file_name.c_str()) != 0)
