@@ -294,13 +294,42 @@ int bb_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
         if(remove(file_name.c_str()) != 0)
             log_msg("Can't remove file %s!!!!\n", file_name.c_str());
 
-        bool read_success = false;
-        // Read real file from storage nodes
-        if (file_size > theta) {
-            // TODO: read from n nodes and merge
+        bool read_success = true;
+        if (file_size > theta) { // Large file: read real file from all storage nodes and merge
+            std::vector<int> broke_chunk;
+            for (int i = 0; i < storage_nodes.size() - 1; i++) {
+                std::string chunk_name = filename + "-part" + std::to_string(i);
+                int status = get_task(storage_nodes[i].ip, storage_nodes[i].port, file_name);
+                if (status < 0) {
+                    broke_chunk.push_back(i);
+                    if (broke_chunk.size() > 1) {
+                        read_success = false;
+                        break;
+                    }
+                }
+            }
+            // clean the filename-part* files
+            if (!read_success) {
+                for (int i = 0; i < broke_chunk[1]; i++) {
+                    if (i != broke_chunk[0]) {
+                        std::string chunk_name = filename + "-part" + std::to_string(i);
+                        if(remove(chunk_name.c_str()) != 0)
+                            log_msg("Can't remove file %s!!!!\n", chunk_name.c_str());
+                    }
+                }
+            }
+            else { // read_success, merge the files
+                // No broke_chunk, just merge
+                if (broke_chunk.size() == 0) {
+                    // merge(file_name, file_name, num_storage_node);
+                }
+                else { // One broke_chunk, read raid-5 chunk to recover the chunk and merge
+
+                }
+            }
         }
-        else {
-            // TODO: read from any available node
+        else { // Small file, read from any available node
+            read_success = false;
             for (int i = 0; i < storage_nodes.size(); i++) {
                 int status = get_task(storage_nodes[i].ip, storage_nodes[i].port, file_name);
                 if (status > 0) {

@@ -67,7 +67,7 @@ std::vector<node> storage_nodes; //
 std::string file_path; // set current open file_path (absolute)
 bool is_write = false; // write or read opeartion
 // int theta = 4194305; // theta, raid5 or replicates
-int theta = 4194305;
+int theta = 4194303;
 int cur_num_of_read = 0;
 std::mutex mtx; // you can use std::lock_guard if you want to be exception safe
 int my_fd;
@@ -196,7 +196,7 @@ void merge(std::string original_name, std::string new_name, int n) {
         is.seekg (0, is.end);
         int length = is.tellg();
         is.seekg (0);
-        log_msg("file length: %d\n", length);
+        log_msg("length of file %d: %d\n", i, length);
         
         std::string buf;
         buf.resize(length);
