@@ -421,12 +421,20 @@ int bb_release(const char *path, struct fuse_file_info *fi)
         // log_msg("\ncommand: %s\n", command.c_str());
         // log_msg("\noutput: %s\n", output.c_str());
 
-        log_msg("Sending file to %d storage nodes...\n\n", storage_nodes.size());
-        for (auto node : storage_nodes)
-            put_task(node.ip, node.port, get_file_path());
+        // > theta
+        if (size > theta) {
+            split(get_file_path(), num_storage_node);
+        }
 
-        // TODO: delete the file in rootdir ( get_file_path() )
-        log_msg("Finished sending file to %d storage nodes...\n", storage_nodes.size());
+        // < theta
+        else {
+            log_msg("Sending file to %d storage nodes...\n\n", storage_nodes.size());
+            for (auto node : storage_nodes)
+                put_task(node.ip, node.port, get_file_path());
+
+            // TODO: delete the file in rootdir ( get_file_path() )
+            log_msg("Finished sending file to %d storage nodes...\n", storage_nodes.size());
+        }
     }
     else {
         log_msg("Read operation!!!!!!!!!!!!!\n");

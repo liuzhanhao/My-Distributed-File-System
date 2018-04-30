@@ -65,6 +65,8 @@ int num_storage_node;
 std::vector<node> storage_nodes; //
 std::string file_path; // set current open file_path (absolute)
 bool is_write = false; // write or read opeartion
+// int theta = 4194305; // theta, raid5 or replicates
+int theta = 0;
 
 // My functions
 static void set_file_path(char fpath[PATH_MAX]) {
@@ -94,14 +96,63 @@ static bool get_is_write() {
     return is_write;
 }
 
-// in_addr_t get_ip(std::string s) {
-//     // ip = inet_addr("10.0.2.2")
-//     in_addr_t ip = inet_addr(s.substr(0, s.find(' ')).c_str());
-// }
+// split a file into n chunks + 1 raid5 chunk
+void split(std::string original_name, int n) {
+  std::ifstream is(original_name, std::ifstream::binary);
+  if (is) {
+    // get length of file:
+      is.seekg (0, is.end);
+      int length = is.tellg();
+      is.seekg (0);
+      log_msg("file length: %d\n", length);
 
-// unsigned short get_port(std::string s) {
-//     return (unsigned short) stoi(s.substr(s.find(' ')));
-// }
+      int chunk_size = length / n;
+      int last_chunk_size = chunk_size + length % n;
+      std::string raid5_buf(last_chunk_size, 0);
+
+      // write file chunk
+      for (int i = 0; i < n; i++) {
+        if (i == n - 1)
+          chunk_size = last_chunk_size;
+        
+        std::string buf;
+        buf.resize(chunk_size);
+        is.read(&buf[0], chunk_size);
+
+        // raid 5
+        for (int j = 0; j < chunk_size; j++)
+          raid5_buf[j] ^= buf[j];
+
+        std::string file_name = original_name + "-part" + std::to_string(i);
+        std::ofstream os(file_name, std::ofstream::binary);
+        os.write(&buf[0], chunk_size);
+        os.close();
+      }
+
+      // write raid-5 chunk
+      std::string file_name = original_name + "-raid5";
+      std::ofstream os(file_name, std::ofstream::binary);
+      os.write(&raid5_buf[0], last_chunk_size);
+      os.close();
+
+      /* 
+        write file_size into a file, this file should be stored in the raid-5 node
+        because we need file_size to calculate the broke_chunk's size when 
+        recovering using raid-5
+      */
+      file_name = original_name + "-size";
+      std::ofstream os_size(file_name);
+      os_size << length;
+      os_size.close();
+
+      if (is)
+        log_msg("all characters read successfully.\n");
+      else
+        log_msg("error: only %d  could be read\n", is.gcount());
+
+      is.close();
+  }
+}
 
 std::string exec(std::string cmd) {
     std::array<char, 128> buffer;
