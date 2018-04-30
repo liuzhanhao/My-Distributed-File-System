@@ -78,10 +78,17 @@ std::string get_file_path(){
     return file_path;
 }
 
-int get_file_size(int fd) {
+int get_local_file_size(int fd) {
     struct stat buf;
     fstat(fd, &buf);
     return buf.st_size;
+}
+
+size_t get_remote_file_size(const char* path) {
+    // try to get path-size from any datanode
+    // read file_size from path-size
+    // delete the path-size file
+    // return file size
 }
 
 static void set_is_write() {
@@ -154,7 +161,7 @@ void split(std::string original_name, int n) {
   }
 }
 
-void merge(string original_name, std::string new_name, int n) {
+void merge(std::string original_name, std::string new_name, int n) {
   std::ofstream os(new_name, std::ofstream::binary);
   if (os) {
       // read file chunk
@@ -218,7 +225,7 @@ void recover(std::string original_name, std::string new_name, int n, int broke_c
         is.seekg (0, is.end);
         int length = is.tellg();
         is.seekg (0);
-        log_msg("%s  length: %d\n", file_name, length);
+        log_msg("%s  length: %d\n", file_name.c_str(), length);
         
         std::string buf;
         buf.resize(length);
@@ -241,7 +248,7 @@ void recover(std::string original_name, std::string new_name, int n, int broke_c
         is.seekg (0, is.end);
         int length = is.tellg();
         is.seekg (0);
-        log_msg("%s  length: %d\n", file_name, length);
+        log_msg("%s  length: %d\n", file_name.c_str(), length);
         
         std::string buf;
         buf.resize(length);

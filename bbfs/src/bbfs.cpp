@@ -398,7 +398,7 @@ int bb_flush(const char *path, struct fuse_file_info *fi)
  */
 int bb_release(const char *path, struct fuse_file_info *fi)
 {
-    int size = get_file_size(fi->fh);
+    int size = get_local_file_size(fi->fh);
 
     log_msg("\nbb_release(path=\"%s\", file_size=%d, fi=0x%08x)\n",
       path, size, fi);
@@ -421,20 +421,33 @@ int bb_release(const char *path, struct fuse_file_info *fi)
         // log_msg("\ncommand: %s\n", command.c_str());
         // log_msg("\noutput: %s\n", output.c_str());
 
+        std::string file_name = get_file_path();
         // > theta
         if (size > theta) {
-            split(get_file_path(), num_storage_node);
+            log_msg("Spliting file into %d chunks + 1 raid5 chunk...\n", storage_nodes.size()-1);
+            log_msg("Sending file to %d storage nodes...\n\n", storage_nodes.size());
+            split(file_name, num_storage_node - 1);
+
+            std::string size_name = file_name + "-size";
+            for (int i = 0; i < num_storage_node; i++) {
+                std::string chunk_name = file_name + "-part" + std::to_string(i);
+                if (i == num_storage_node - 1)
+                    chunk_name = file_name + "-raid5";
+                put_task(storage_nodes[i].ip, storage_nodes[i].port, chunk_name);
+                put_task(storage_nodes[i].ip, storage_nodes[i].port, size_name);
+            }
+            // TODO: delete all files in rootdir
         }
 
         // < theta
         else {
             log_msg("Sending file to %d storage nodes...\n\n", storage_nodes.size());
             for (auto node : storage_nodes)
-                put_task(node.ip, node.port, get_file_path());
+                put_task(node.ip, node.port, file_name);
 
             // TODO: delete the file in rootdir ( get_file_path() )
-            log_msg("Finished sending file to %d storage nodes...\n", storage_nodes.size());
         }
+        log_msg("Finished sending file to %d storage nodes...\n", storage_nodes.size());
     }
     else {
         log_msg("Read operation!!!!!!!!!!!!!\n");
