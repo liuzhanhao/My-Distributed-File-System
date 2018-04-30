@@ -52,6 +52,7 @@
 #include <fstream>
 #include <vector>
 #include <arpa/inet.h>
+#include <mutex>
 #include "myftpclient.hpp"
 #include "myftp.hpp"
 
@@ -68,6 +69,8 @@ bool is_write = false; // write or read opeartion
 // int theta = 4194305; // theta, raid5 or replicates
 int theta = 4194305;
 int cur_num_of_read = 0;
+std::mutex mtx; // you can use std::lock_guard if you want to be exception safe
+int my_fd;
 
 
 //  All the paths I see are relative to the root of the mounted

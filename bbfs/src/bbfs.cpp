@@ -252,6 +252,10 @@ int bb_open(const char *path, struct fuse_file_info *fi)
     
     fi->fh = fd;
 
+    mtx.lock();
+    my_fd = fd;
+    mtx.unlock();
+
     log_fi(fi);
     
     return retstat;
@@ -290,33 +294,44 @@ int bb_read(const char *path, char *buf, size_t size, off_t offset, struct fuse_
         if(remove(file_name.c_str()) != 0)
             log_msg("Can't remove file %s!!!!\n", file_name.c_str());
 
+        bool read_success = false;
         // Read real file from storage nodes
         if (file_size > theta) {
             // TODO: read from n nodes and merge
         }
         else {
             // TODO: read from any available node
-            int status = get_task(storage_nodes[0].ip, storage_nodes[0].port, file_name);
-            if (status < 0) {
-                log_msg("[bb_read] get_task failed!!!\n");
-                abort();
+            for (int i = 0; i < storage_nodes.size(); i++) {
+                int status = get_task(storage_nodes[i].ip, storage_nodes[i].port, file_name);
+                if (status > 0) {
+                    read_success = true;
+                    break;
+                }
             }
+        }
+        if (!read_success) {
+            log_msg("[bb_read] get_task failed!!!\n");
+            exit(-1);
         }
 
         int fd = log_syscall("open", open(file_name.c_str(), fi->flags), 0);
         if (fd < 0)
             retstat = log_error("[bb_read] open");
-        fi->fh = fd;
+        
+        mtx.lock();
+        my_fd = fd;
+        mtx.unlock();
+
         log_msg("\n\nFinished pulling file from remote storage nodes...");
         log_msg("\n------------------------------------------\n");
     }
-    
+    log_msg("cur_num_of_read: %d, my_fd: %d\n", cur_num_of_read, my_fd);
     log_msg("\nbb_read(path=\"%s\", buf=0x%08x, size=%d, offset=%lld, fi=0x%08x)\n",
         path, buf, size, offset, fi);
     // no need to get fpath on this one, since I work from fi->fh not the path
     log_fi(fi);
 
-    return log_syscall("pread", pread(fi->fh, buf, size, offset), 0);
+    return log_syscall("pread", pread(my_fd, buf, size, offset), 0);
 }
 
 /** Write data to an open file
@@ -448,7 +463,7 @@ int bb_release(const char *path, struct fuse_file_info *fi)
                     chunk_name = file_name + "-raid5";
                 int status = put_task(storage_nodes[i].ip, storage_nodes[i].port, chunk_name);
                 if (status < 0)
-                    log_msg("put_task failed!!!\n");
+                    log_msg("put_task at node %d failed!!!\n", i);
             }
             // Delete all files in rootdir
             retstat = log_syscall("close", close(fi->fh), 0);
@@ -489,21 +504,25 @@ int bb_release(const char *path, struct fuse_file_info *fi)
                     log_msg("Can't remove file %s!!!!\n", chunk_name.c_str());
             }
         }
-        // Create file with file_name, which store only the file size
-        std::ofstream os_size(file_name);
-        os_size << size;
-        os_size.close();
-
         log_msg("Finished sending file to %d storage nodes...\n", storage_nodes.size());
     }
     else {
         log_msg("Read operation!!!!!!!!!!!!!\n");
         // read file size from filename
-        // int file_size = get_real_file_size(file_name);
-        log_msg("file_name: %s\n", file_name.c_str());
+        size = get_local_file_size(my_fd);
+        log_msg("file_size: %d\n", size);
 
-        
+        // Delete file with filename
+        retstat = log_syscall("close", close(my_fd), 0);
+        if(remove(file_name.c_str()) != 0)
+            log_msg("Can't remove file %s!!!!\n", file_name.c_str()); 
     }
+
+    // Create file with file_name, which store only the file size
+    std::ofstream os_size(file_name);
+    os_size << size;
+    os_size.close();
+
     log_msg("------------------------------------------\n");
 
     // We need to close the file.  Had we allocated any resources
@@ -633,6 +652,10 @@ int bb_opendir(const char *path, struct fuse_file_info *fi)
     retstat = log_error("bb_opendir opendir");
     
     fi->fh = (intptr_t) dp;
+
+    mtx.lock();
+    my_fd = fi->fh;
+    mtx.unlock();
     
     log_fi(fi);
     
