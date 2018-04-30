@@ -66,7 +66,7 @@ int num_storage_node;
 std::vector<node> storage_nodes; //
 std::string file_path; // set current open file_path (absolute)
 bool is_write = false; // write or read opeartion
-int theta = 4194305; // theta, raid5 or replicates
+int theta; // theta, raid5 or replicates
 int cur_num_of_read = 0;
 std::mutex mtx; // you can use std::lock_guard if you want to be exception safe
 int my_fd;
@@ -289,4 +289,12 @@ void recover(std::string original_name, std::string new_name, int n, int broke_c
       }
       os.close();
   }
+}
+
+bool replace(std::string& str, const std::string& from, const std::string& to) {
+    size_t start_pos = str.find(from);
+    if(start_pos == std::string::npos)
+        return false;
+    str.replace(start_pos, from.length(), to);
+    return true;
 }

@@ -1083,10 +1083,12 @@ int main(int argc, char *argv[])
 
     // Pull the rootdir out of the argument list and save it in my
     // internal data
-    bb_data->rootdir = realpath(argv[argc-2], NULL);
-    argv[argc-2] = argv[argc-1];
+    theta = std::atoi(argv[argc-1]);
+    bb_data->rootdir = realpath(argv[argc-3], NULL);
+    argv[argc-3] = argv[argc-2];
     argv[argc-1] = NULL;
-    argc--;
+    argv[argc-2] = NULL;
+    argc -= 2;
     
     bb_data->logfile = log_open();
     
